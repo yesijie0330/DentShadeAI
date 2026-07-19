@@ -1,0 +1,25 @@
+{
+  "row_count": 193486,
+  "framework_brand": "Aidite 3D Pro",
+  "framework_shades": [
+    "Aidite 3D A3",
+    "Aidite 3D Bleach"
+  ],
+  "ceramic_brands": [
+    "VITA VM 13",
+    "VITA VM 9"
+  ],
+  "thicknesses": [
+    0.5,
+    0.6,
+    0.7,
+    0.8,
+    0.9,
+    1.0
+  ],
+  "available_spaces": [
+    0.5,
+    0.8,
+    1.0
+  ]
+}

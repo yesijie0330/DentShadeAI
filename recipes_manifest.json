@@ -1,0 +1,57 @@
+{
+  "format": "DentShade compact recipe data v1",
+  "total_rows": 193486,
+  "fields": [
+    "framework_thickness",
+    "available_space",
+    "prep_l",
+    "prep_a",
+    "prep_b",
+    "target_l",
+    "target_a",
+    "target_b",
+    "wash_bake",
+    "dentin_recipe",
+    "dentin_ratio",
+    "dentin_simplified_ratio",
+    "enamel_recipe",
+    "delta_e",
+    "pred_l",
+    "pred_a",
+    "pred_b"
+  ],
+  "files": [
+    {
+      "file": "recipes_vita_vm_13_aidite_3d_a3.json",
+      "ceramic_brand": "VITA VM 13",
+      "framework_shade": "Aidite 3D A3",
+      "framework_brand": "Aidite 3D Pro",
+      "rows": 64783,
+      "bytes": 7850066
+    },
+    {
+      "file": "recipes_vita_vm_13_aidite_3d_bleach.json",
+      "ceramic_brand": "VITA VM 13",
+      "framework_shade": "Aidite 3D Bleach",
+      "framework_brand": "Aidite 3D Pro",
+      "rows": 62065,
+      "bytes": 7519957
+    },
+    {
+      "file": "recipes_vita_vm_9_aidite_3d_a3.json",
+      "ceramic_brand": "VITA VM 9",
+      "framework_shade": "Aidite 3D A3",
+      "framework_brand": "Aidite 3D Pro",
+      "rows": 24643,
+      "bytes": 2985504
+    },
+    {
+      "file": "recipes_vita_vm_9_aidite_3d_bleach.json",
+      "ceramic_brand": "VITA VM 9",
+      "framework_shade": "Aidite 3D Bleach",
+      "framework_brand": "Aidite 3D Pro",
+      "rows": 41995,
+      "bytes": 5086193
+    }
+  ]
+}
