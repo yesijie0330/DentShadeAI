@@ -12,11 +12,11 @@
       <aside class="sidebar">
         <div class="brand"><span>D</span><div><strong>DentShade</strong><small>AI SHADE GUIDE</small></div></div>
         <p class="eyebrow">LOCAL PROTOTYPE</p>
-        <h1>自由選擇三個牙齒取樣區域</h1>
-        <p class="intro">拖曳頸部、中部與切端框，右下角可調整範圍大小，再從照片讀取平均色彩。</p>
+        <h1>自由點選三個牙齒取樣位置</h1>
+        <p class="intro">牙技師在照片上依序點選頸部、中部與切端，系統會讀取每個點周圍的平均色彩。</p>
         <ol class="steps">
           <li class="active"><span>1</span><div><strong>匯入照片</strong><small>JPG、PNG、WebP</small></div></li>
-          <li class="active"><span>2</span><div><strong>自由設定三區</strong><small>拖曳與縮放取樣框</small></div></li>
+          <li class="active"><span>2</span><div><strong>自由點選三區</strong><small>頸部・中部・切端</small></div></li>
           <li><span>3</span><div><strong>分析色階</strong><small>讀取 L*a*b* 與候選色</small></div></li>
         </ol>
         <p class="disclaimer">研究與介面驗證用，不作為臨床診斷依據。</p>
@@ -30,28 +30,22 @@
 
         <div class="main-grid">
           <section class="card photo-card">
-            <div class="card-title"><div><span>01</span><h3>選擇分析區域</h3></div><strong id="photoStatus">三區自由模式</strong></div>
-            <p class="region-help">牙技師可分別拖曳頸部、中部、切端三個取樣框，並從右下角自由調整範圍大小。</p>
+            <div class="card-title"><div><span>01</span><h3>選擇分析位置</h3></div><strong id="photoStatus">三點取樣模式</strong></div>
+            <p class="region-help">先選擇頸部、中部或切端，再直接點擊照片設定取樣點；已設定的點仍可自由拖曳。</p>
             <div id="photoStage" class="photo-stage">
               <img id="photo" alt="上傳的牙齒照片" hidden />
               <div id="demoImage" class="demo-image"><div class="demo-tooth"></div><small>DEMO IMAGE</small></div>
-              <div id="region-cervical" class="sample-region cervical" data-zone="cervical" tabindex="0" role="button" aria-label="頸部取樣框，可拖曳">
-                <span>頸部</span><i class="resize-handle" aria-hidden="true"></i>
-              </div>
-              <div id="region-middle" class="sample-region middle selected" data-zone="middle" tabindex="0" role="button" aria-label="中部取樣框，可拖曳">
-                <span>中部</span><i class="resize-handle" aria-hidden="true"></i>
-              </div>
-              <div id="region-incisal" class="sample-region incisal" data-zone="incisal" tabindex="0" role="button" aria-label="切端取樣框，可拖曳">
-                <span>切端</span><i class="resize-handle" aria-hidden="true"></i>
-              </div>
+              <button id="point-cervical" class="sample-point cervical" data-zone="cervical" type="button" aria-label="頸部取樣點，可拖曳"><span>頸部</span></button>
+              <button id="point-middle" class="sample-point middle selected" data-zone="middle" type="button" aria-label="中部取樣點，可拖曳"><span>中部</span></button>
+              <button id="point-incisal" class="sample-point incisal" data-zone="incisal" type="button" aria-label="切端取樣點，可拖曳"><span>切端</span></button>
             </div>
             <div class="photo-actions">
               <label class="upload-button">↑ 上傳牙齒照片<input id="fileInput" type="file" accept="image/jpeg,image/png,image/webp" /></label>
               <div><strong id="fileName">尚未選擇照片</strong><small>圖片只在你的電腦中處理，不會上傳</small></div>
-              <button id="resetRegions" class="text-button" type="button">重設三區</button>
+              <button id="resetPoints" class="text-button" type="button">重設三點</button>
             </div>
             <p id="errorMessage" class="error" role="alert"></p>
-            <div class="tip"><strong>操作方式</strong><span>拖曳框中央可移動位置；拖曳右下角小圓點可改變大小。鍵盤方向鍵也能微調。</span></div>
+            <div class="tip"><strong>操作方式</strong><span>點擊照片可放置目前選取的區域；拖曳圓點可移動，鍵盤方向鍵可微調。</span></div>
           </section>
 
           <section class="card control-card">
@@ -61,11 +55,17 @@
               <button data-select-zone="middle" class="selected" role="tab" aria-selected="true"><small>02</small><strong>中部</strong></button>
               <button data-select-zone="incisal" role="tab"><small>03</small><strong>切端</strong></button>
             </div>
-            <div class="active-zone"><span>目前選擇</span><strong id="activeZoneName">中部</strong><small id="regionPosition">X 36% · Y 42% · 28 × 18%</small></div>
+            <div class="active-zone"><span>目前選擇</span><strong id="activeZoneName">中部</strong><small id="pointPosition">X 50% · Y 50%</small></div>
             <div class="lab-list">
               <label><span><strong>L*</strong><small>明度</small></span><input id="labL" type="number" step="0.1" min="0" max="100" value="72.2" /></label>
               <label><span><strong>a*</strong><small>綠 ↔ 紅</small></span><input id="labA" type="number" step="0.1" min="-128" max="127" value="1.5" /></label>
               <label><span><strong>b*</strong><small>藍 ↔ 黃</small></span><input id="labB" type="number" step="0.1" min="-128" max="127" value="15" /></label>
+            </div>
+            <div class="data-controls">
+              <label><span>陶瓷品牌</span><select id="ceramicBrand"><option>VITA VM 13</option><option>VITA VM 9</option></select></label>
+              <label><span>支架色</span><select id="frameworkShade"><option>Aidite 3D A3</option><option>Aidite 3D Bleach</option></select></label>
+              <label><span>支架厚度</span><select id="frameworkThickness"><option>0.5</option><option>0.6</option><option>0.7</option><option>0.8</option><option>0.9</option><option>1.0</option></select></label>
+              <label><span>可用空間</span><select id="availableSpace"><option>0.5</option><option>0.8</option><option>1.0</option></select></label>
             </div>
             <button id="analyzeButton" class="analyze-button" type="button"><span>偵測三區顏色並比對</span><span>→</span></button>
             <p class="method">照片取樣轉換為 CIELAB，再以 CIE76（ΔE*ab）排序。</p>
@@ -73,11 +73,12 @@
         </div>
 
         <section class="card results-card">
-          <div class="results-header"><div><span>03</span><div><h3>色階建議</h3><p id="resultSummary">調整三區位置後，按下「偵測三區顏色並比對」。</p></div></div><div id="overallResult" class="overall" hidden><small>整體參考</small><strong>—</strong></div></div>
+          <div class="results-header"><div><span>03</span><div><h3>色階與配方建議</h3><p id="resultSummary">設定三個取樣點後，按下「偵測三區顏色並比對」。</p></div></div><div id="overallResult" class="overall" hidden><small>整體參考</small><strong>—</strong></div></div>
           <div id="emptyResult" class="empty-result"><i></i><div><strong>尚未開始分析</strong><span>結果會顯示三區 L*a*b*、首選色階及兩個候選色。</span></div></div>
           <div id="resultGrid" class="result-grid" hidden></div>
+          <div id="recipeResult" class="recipe-result" hidden></div>
         </section>
-        <footer><span>DentShade AI · LOCAL PROTOTYPE</span><span>VITA CLASSICAL 示範資料 · 非臨床用途</span></footer>
+        <footer><span>DentShade AI · GITHUB PROTOTYPE</span><span>VITA 3D-MASTER 與配方資料 · 非臨床用途</span></footer>
       </section>
     </main>
     <canvas id="sampleCanvas" hidden></canvas>

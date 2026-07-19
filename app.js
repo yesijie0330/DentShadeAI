@@ -4,20 +4,18 @@ const ZONES = {
   incisal: { name: "切端", color: "#8fc8ff", lab: { l: 76.1, a: -0.7, b: 12.1 } },
 };
 
-const DEFAULT_REGIONS = {
-  cervical: { x: 38, y: 22, w: 24, h: 16 },
-  middle: { x: 36, y: 42, w: 28, h: 18 },
-  incisal: { x: 38, y: 64, w: 24, h: 14 },
+const DEFAULT_POINTS = {
+  cervical: { x: 50, y: 35 },
+  middle: { x: 50, y: 50 },
+  incisal: { x: 50, y: 66 },
 };
 
-const SHADES = [
-  ["A1", 75.0, -1.4, 13.2], ["A2", 72.1, 1.4, 15.3], ["A3", 68.0, 3.1, 16.4],
-  ["A3.5", 64.4, 4.2, 17.5], ["A4", 58.3, 5.3, 18.0], ["B1", 78.3, -3.0, 12.5],
-  ["B2", 74.0, -1.0, 17.0], ["B3", 69.5, 1.0, 21.2], ["B4", 64.0, 2.0, 23.0],
-  ["C1", 70.2, 0.1, 11.0], ["C2", 65.8, 0.5, 13.0], ["C3", 60.2, 1.0, 14.0],
-  ["C4", 55.5, 1.5, 15.0], ["D2", 72.5, 1.6, 14.0], ["D3", 67.5, 2.5, 16.0],
-  ["D4", 62.5, 3.5, 17.5],
-].map(([name, l, a, b]) => ({ name, l, a, b }));
+const DATA_FILES = {
+  "VITA VM 13|Aidite 3D A3": "recipes_vita_vm_13_aidite_3d_a3.json",
+  "VITA VM 13|Aidite 3D Bleach": "recipes_vita_vm_13_aidite_3d_bleach.json",
+  "VITA VM 9|Aidite 3D A3": "recipes_vita_vm_9_aidite_3d_a3.json",
+  "VITA VM 9|Aidite 3D Bleach": "recipes_vita_vm_9_aidite_3d_bleach.json",
+};
 
 const stage = document.querySelector("#photoStage");
 const photo = document.querySelector("#photo");
@@ -25,28 +23,42 @@ const demoImage = document.querySelector("#demoImage");
 const fileInput = document.querySelector("#fileInput");
 const canvas = document.querySelector("#sampleCanvas");
 const context = canvas.getContext("2d", { willReadFrequently: true });
-const regions = structuredClone(DEFAULT_REGIONS);
+const points = structuredClone(DEFAULT_POINTS);
+const recipeCache = new Map();
+let shadeLibrary = [];
 let activeZone = "middle";
-let pointerAction = null;
+let draggingZone = null;
 let hasPhoto = false;
 
 function clamp(value, min, max) { return Math.min(max, Math.max(min, value)); }
 function round(value) { return Math.round(value * 10) / 10; }
-
-function renderRegion(zone) {
-  const element = document.querySelector(`#region-${zone}`);
-  const region = regions[zone];
-  element.style.left = `${region.x}%`;
-  element.style.top = `${region.y}%`;
-  element.style.width = `${region.w}%`;
-  element.style.height = `${region.h}%`;
+function distance(first, second) {
+  return Math.sqrt((first.l - second.l) ** 2 + (first.a - second.a) ** 2 + (first.b - second.b) ** 2);
 }
 
-function renderAllRegions() { Object.keys(regions).forEach(renderRegion); }
+async function loadShadeLibrary() {
+  try {
+    const response = await fetch("vita3dmaster_lab.json");
+    if (!response.ok) throw new Error("無法載入 VITA 資料");
+    const data = await response.json();
+    shadeLibrary = Object.entries(data).map(([name, lab]) => ({ name, l: lab.L, a: lab.a, b: lab.b }));
+  } catch (error) {
+    document.querySelector("#errorMessage").textContent = "VITA 色階資料尚未載入，請確認 JSON 已上傳 GitHub。";
+  }
+}
+
+function renderPoint(zone) {
+  const point = points[zone];
+  const element = document.querySelector(`#point-${zone}`);
+  element.style.left = `${point.x}%`;
+  element.style.top = `${point.y}%`;
+}
+
+function renderAllPoints() { Object.keys(points).forEach(renderPoint); }
 
 function selectZone(zone) {
   activeZone = zone;
-  document.querySelectorAll(".sample-region").forEach((item) => item.classList.toggle("selected", item.dataset.zone === zone));
+  document.querySelectorAll(".sample-point").forEach((item) => item.classList.toggle("selected", item.dataset.zone === zone));
   document.querySelectorAll("[data-select-zone]").forEach((button) => {
     const selected = button.dataset.selectZone === zone;
     button.classList.toggle("selected", selected);
@@ -58,80 +70,62 @@ function selectZone(zone) {
   document.querySelector("#labA").value = lab.a.toFixed(1);
   document.querySelector("#labB").value = lab.b.toFixed(1);
   document.querySelector("#activeSwatch").style.background = labToCss(lab);
-  updatePositionText();
+  updatePointText();
 }
 
-function updatePositionText() {
-  const region = regions[activeZone];
-  document.querySelector("#regionPosition").textContent = `X ${round(region.x)}% · Y ${round(region.y)}% · ${round(region.w)} × ${round(region.h)}%`;
+function updatePointText() {
+  const point = points[activeZone];
+  document.querySelector("#pointPosition").textContent = `X ${round(point.x)}% · Y ${round(point.y)}%`;
 }
 
-function pointerStart(event) {
-  const regionElement = event.target.closest(".sample-region");
-  if (!regionElement) return;
-  event.preventDefault();
-  const zone = regionElement.dataset.zone;
-  selectZone(zone);
+function setPointFromEvent(zone, event) {
   const bounds = stage.getBoundingClientRect();
-  const region = regions[zone];
-  pointerAction = {
-    zone,
-    mode: event.target.classList.contains("resize-handle") ? "resize" : "move",
-    startX: event.clientX,
-    startY: event.clientY,
-    bounds,
-    original: { ...region },
-  };
-  regionElement.setPointerCapture(event.pointerId);
+  points[zone].x = clamp(((event.clientX - bounds.left) / bounds.width) * 100, 2, 98);
+  points[zone].y = clamp(((event.clientY - bounds.top) / bounds.height) * 100, 2, 98);
+  renderPoint(zone);
+  updatePointText();
+  if (hasPhoto) sampleOnePoint(zone);
 }
 
-function pointerMove(event) {
-  if (!pointerAction) return;
-  const { zone, mode, startX, startY, bounds, original } = pointerAction;
-  const dx = ((event.clientX - startX) / bounds.width) * 100;
-  const dy = ((event.clientY - startY) / bounds.height) * 100;
-  const region = regions[zone];
-  if (mode === "move") {
-    region.x = clamp(original.x + dx, 0, 100 - region.w);
-    region.y = clamp(original.y + dy, 0, 100 - region.h);
-  } else {
-    region.w = clamp(original.w + dx, 7, 100 - region.x);
-    region.h = clamp(original.h + dy, 7, 100 - region.y);
+stage.addEventListener("pointerdown", (event) => {
+  const marker = event.target.closest(".sample-point");
+  if (marker) {
+    event.preventDefault();
+    draggingZone = marker.dataset.zone;
+    selectZone(draggingZone);
+    marker.setPointerCapture(event.pointerId);
+    return;
   }
-  renderRegion(zone);
-  updatePositionText();
-}
+  selectZone(activeZone);
+  setPointFromEvent(activeZone, event);
+});
 
-function pointerEnd() { pointerAction = null; }
+stage.addEventListener("pointermove", (event) => {
+  if (!draggingZone) return;
+  setPointFromEvent(draggingZone, event);
+});
+stage.addEventListener("pointerup", () => { draggingZone = null; });
+stage.addEventListener("pointercancel", () => { draggingZone = null; });
 
-function keyboardMove(event) {
-  const regionElement = event.target.closest(".sample-region");
-  if (!regionElement || !event.key.startsWith("Arrow")) return;
-  event.preventDefault();
-  const zone = regionElement.dataset.zone;
-  const region = regions[zone];
-  selectZone(zone);
-  const step = event.altKey ? 0.2 : 1;
-  if (event.shiftKey) {
-    if (event.key === "ArrowRight") region.w = clamp(region.w + step, 7, 100 - region.x);
-    if (event.key === "ArrowLeft") region.w = clamp(region.w - step, 7, 100 - region.x);
-    if (event.key === "ArrowDown") region.h = clamp(region.h + step, 7, 100 - region.y);
-    if (event.key === "ArrowUp") region.h = clamp(region.h - step, 7, 100 - region.y);
-  } else {
-    if (event.key === "ArrowRight") region.x = clamp(region.x + step, 0, 100 - region.w);
-    if (event.key === "ArrowLeft") region.x = clamp(region.x - step, 0, 100 - region.w);
-    if (event.key === "ArrowDown") region.y = clamp(region.y + step, 0, 100 - region.h);
-    if (event.key === "ArrowUp") region.y = clamp(region.y - step, 0, 100 - region.h);
-  }
-  renderRegion(zone);
-  updatePositionText();
-}
+document.querySelectorAll(".sample-point").forEach((marker) => {
+  marker.addEventListener("keydown", (event) => {
+    if (!event.key.startsWith("Arrow")) return;
+    event.preventDefault();
+    const zone = marker.dataset.zone;
+    const step = event.altKey ? 0.2 : 1;
+    if (event.key === "ArrowLeft") points[zone].x -= step;
+    if (event.key === "ArrowRight") points[zone].x += step;
+    if (event.key === "ArrowUp") points[zone].y -= step;
+    if (event.key === "ArrowDown") points[zone].y += step;
+    points[zone].x = clamp(points[zone].x, 2, 98);
+    points[zone].y = clamp(points[zone].y, 2, 98);
+    selectZone(zone);
+    renderPoint(zone);
+    updatePointText();
+    if (hasPhoto) sampleOnePoint(zone);
+  });
+});
 
-stage.addEventListener("pointerdown", pointerStart);
-stage.addEventListener("pointermove", pointerMove);
-stage.addEventListener("pointerup", pointerEnd);
-stage.addEventListener("pointercancel", pointerEnd);
-stage.addEventListener("keydown", keyboardMove);
 document.querySelectorAll("[data-select-zone]").forEach((button) => button.addEventListener("click", () => selectZone(button.dataset.selectZone)));
 
 fileInput.addEventListener("change", () => {
@@ -147,36 +141,34 @@ fileInput.addEventListener("change", () => {
     demoImage.hidden = true;
     hasPhoto = true;
     document.querySelector("#fileName").textContent = file.name;
-    document.querySelector("#photoStatus").textContent = "三區自由模式";
+    document.querySelector("#photoStatus").textContent = "三點取樣模式";
     error.textContent = "";
+    photo.onload = () => Object.keys(points).forEach(sampleOnePoint);
   };
   reader.readAsDataURL(file);
 });
 
-function resetRegions() {
-  Object.keys(DEFAULT_REGIONS).forEach((zone) => Object.assign(regions[zone], DEFAULT_REGIONS[zone]));
-  renderAllRegions();
+function resetPoints() {
+  Object.keys(DEFAULT_POINTS).forEach((zone) => Object.assign(points[zone], DEFAULT_POINTS[zone]));
+  renderAllPoints();
   selectZone("middle");
+  if (hasPhoto) Object.keys(points).forEach(sampleOnePoint);
 }
 
-document.querySelector("#resetRegions").addEventListener("click", resetRegions);
+document.querySelector("#resetPoints").addEventListener("click", resetPoints);
 document.querySelector("#resetAll").addEventListener("click", () => {
-  resetRegions();
+  resetPoints();
   fileInput.value = "";
   photo.removeAttribute("src");
   photo.hidden = true;
   demoImage.hidden = false;
   hasPhoto = false;
-  Object.keys(ZONES).forEach((zone) => Object.assign(ZONES[zone].lab, {
-    cervical: { l: 67.4, a: 3.2, b: 17.7 }, middle: { l: 72.2, a: 1.5, b: 15 }, incisal: { l: 76.1, a: -0.7, b: 12.1 },
-  }[zone]));
   document.querySelector("#fileName").textContent = "尚未選擇照片";
-  document.querySelector("#photoStatus").textContent = "三區自由模式";
   document.querySelector("#resultGrid").hidden = true;
+  document.querySelector("#recipeResult").hidden = true;
   document.querySelector("#emptyResult").hidden = false;
   document.querySelector("#overallResult").hidden = true;
-  document.querySelector("#resultSummary").textContent = "調整三區位置後，按下「偵測三區顏色並比對」。";
-  selectZone("middle");
+  document.querySelector("#resultSummary").textContent = "設定三個取樣點後，按下「偵測三區顏色並比對」。";
 });
 
 ["labL", "labA", "labB"].forEach((id) => document.querySelector(`#${id}`).addEventListener("input", () => {
@@ -188,26 +180,39 @@ document.querySelector("#resetAll").addEventListener("click", () => {
   document.querySelector("#activeSwatch").style.background = labToCss(ZONES[activeZone].lab);
 }));
 
-function samplePhoto() {
-  if (!hasPhoto || !photo.naturalWidth) return;
-  canvas.width = photo.naturalWidth;
-  canvas.height = photo.naturalHeight;
-  context.drawImage(photo, 0, 0);
-  Object.keys(regions).forEach((zone) => {
-    const region = regions[zone];
-    const x = Math.round((region.x / 100) * canvas.width);
-    const y = Math.round((region.y / 100) * canvas.height);
-    const w = Math.max(1, Math.round((region.w / 100) * canvas.width));
-    const h = Math.max(1, Math.round((region.h / 100) * canvas.height));
-    const pixels = context.getImageData(x, y, Math.min(w, canvas.width - x), Math.min(h, canvas.height - y)).data;
-    let red = 0, green = 0, blue = 0, count = 0;
-    const stride = Math.max(4, Math.floor(pixels.length / 180000) * 4);
-    for (let index = 0; index < pixels.length; index += stride) {
-      const alpha = pixels[index + 3];
-      if (alpha > 20) { red += pixels[index]; green += pixels[index + 1]; blue += pixels[index + 2]; count++; }
+function prepareCanvas() {
+  if (!hasPhoto || !photo.naturalWidth) return false;
+  if (canvas.width !== photo.naturalWidth || canvas.height !== photo.naturalHeight) {
+    canvas.width = photo.naturalWidth;
+    canvas.height = photo.naturalHeight;
+    context.drawImage(photo, 0, 0);
+  }
+  return true;
+}
+
+function sampleOnePoint(zone) {
+  if (!prepareCanvas()) return;
+  const point = points[zone];
+  const centerX = Math.round((point.x / 100) * canvas.width);
+  const centerY = Math.round((point.y / 100) * canvas.height);
+  const radius = Math.max(4, Math.round(Math.min(canvas.width, canvas.height) * 0.025));
+  const startX = clamp(centerX - radius, 0, canvas.width - 1);
+  const startY = clamp(centerY - radius, 0, canvas.height - 1);
+  const width = Math.min(radius * 2 + 1, canvas.width - startX);
+  const height = Math.min(radius * 2 + 1, canvas.height - startY);
+  const pixels = context.getImageData(startX, startY, width, height).data;
+  let red = 0, green = 0, blue = 0, count = 0;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if ((x - radius) ** 2 + (y - radius) ** 2 > radius ** 2) continue;
+      const index = (y * width + x) * 4;
+      if (pixels[index + 3] > 20) {
+        red += pixels[index]; green += pixels[index + 1]; blue += pixels[index + 2]; count += 1;
+      }
     }
-    if (count) ZONES[zone].lab = rgbToLab(red / count, green / count, blue / count);
-  });
+  }
+  if (count) ZONES[zone].lab = rgbToLab(red / count, green / count, blue / count);
+  if (zone === activeZone) selectZone(zone);
 }
 
 function rgbToLab(red, green, blue) {
@@ -231,32 +236,84 @@ function labToCss(lab) {
 }
 
 function matchesFor(lab) {
-  return SHADES.map((shade) => ({ ...shade, distance: Math.sqrt((lab.l - shade.l) ** 2 + (lab.a - shade.a) ** 2 + (lab.b - shade.b) ** 2) }))
+  return shadeLibrary.map((shade) => ({ ...shade, distance: distance(lab, shade) }))
     .sort((first, second) => first.distance - second.distance).slice(0, 3);
 }
 
 function resultCard(zone) {
   const lab = ZONES[zone].lab;
   const matches = matchesFor(lab);
+  if (!matches.length) return `<article class="result-card ${zone}"><h4>${ZONES[zone].name}</h4><p>色階資料載入中</p></article>`;
   const best = matches[0];
   return `<article class="result-card ${zone}"><div class="top"><h4>${ZONES[zone].name}</h4><span class="lab">L ${lab.l.toFixed(1)} · a ${lab.a.toFixed(1)} · b ${lab.b.toFixed(1)}</span></div><div class="match"><i class="shade" style="background:${labToCss(best)}"></i><div><small>首選色階</small><strong>${best.name}</strong></div><span class="delta">ΔE<br>${best.distance.toFixed(2)}</span></div><div class="candidates">${matches.slice(1).map((candidate) => `<div class="candidate"><strong>${candidate.name}</strong>ΔE ${candidate.distance.toFixed(2)}</div>`).join("")}</div></article>`;
 }
 
-document.querySelector("#analyzeButton").addEventListener("click", () => {
-  samplePhoto();
-  const resultGrid = document.querySelector("#resultGrid");
-  resultGrid.innerHTML = Object.keys(ZONES).map(resultCard).join("");
-  resultGrid.hidden = false;
-  document.querySelector("#emptyResult").hidden = true;
-  const average = Object.values(ZONES).reduce((sum, zone) => ({ l: sum.l + zone.lab.l / 3, a: sum.a + zone.lab.a / 3, b: sum.b + zone.lab.b / 3 }), { l: 0, a: 0, b: 0 });
-  const overall = matchesFor(average)[0];
-  const overallElement = document.querySelector("#overallResult");
-  overallElement.hidden = false;
-  overallElement.querySelector("strong").textContent = overall.name;
-  document.querySelector("#resultSummary").textContent = hasPhoto ? "已依三個自訂範圍讀取照片平均色彩。" : "目前使用範例數值；上傳照片後可讀取自訂範圍。";
-  selectZone(activeZone);
-  document.querySelector(".results-card").scrollIntoView({ behavior: "smooth", block: "start" });
+async function loadRecipes() {
+  const key = `${document.querySelector("#ceramicBrand").value}|${document.querySelector("#frameworkShade").value}`;
+  const filename = DATA_FILES[key];
+  if (recipeCache.has(filename)) return recipeCache.get(filename);
+  const response = await fetch(filename);
+  if (!response.ok) throw new Error(`無法載入 ${filename}`);
+  const data = await response.json();
+  recipeCache.set(filename, data);
+  return data;
+}
+
+function findRecipe(data, targetLab) {
+  const thickness = Number(document.querySelector("#frameworkThickness").value);
+  const space = Number(document.querySelector("#availableSpace").value);
+  const field = Object.fromEntries(data.fields.map((name, index) => [name, index]));
+  let best = null;
+  let bestScore = Infinity;
+  for (const row of data.rows) {
+    if (row[field.framework_thickness] !== thickness || row[field.available_space] !== space) continue;
+    const target = { l: row[field.target_l], a: row[field.target_a], b: row[field.target_b] };
+    const score = distance(targetLab, target) + row[field.delta_e] * 0.15;
+    if (score < bestScore) { bestScore = score; best = row; }
+  }
+  return best ? { row: best, field, score: bestScore } : null;
+}
+
+function renderRecipe(match, data) {
+  const element = document.querySelector("#recipeResult");
+  if (!match) {
+    element.innerHTML = "<strong>找不到符合目前厚度與空間的配方。</strong>";
+    element.hidden = false;
+    return;
+  }
+  const { row, field } = match;
+  element.innerHTML = `<div><span>配方資料建議</span><h4>${data.ceramic_brand} · ${data.framework_shade}</h4></div><div class="recipe-grid"><p><small>Wash bake</small><strong>${row[field.wash_bake] || "—"}</strong></p><p><small>Dentin</small><strong>${row[field.dentin_recipe] || "—"}</strong><em>${row[field.dentin_ratio] || ""}</em></p><p><small>Enamel</small><strong>${row[field.enamel_recipe] || "—"}</strong></p><p><small>資料 ΔE</small><strong>${Number(row[field.delta_e]).toFixed(2)}</strong></p></div><small class="recipe-note">依目標色、支架厚度與可用空間搜尋資料庫；仍需由牙技師複核。</small>`;
+  element.hidden = false;
+}
+
+document.querySelector("#analyzeButton").addEventListener("click", async () => {
+  const button = document.querySelector("#analyzeButton");
+  button.disabled = true;
+  button.querySelector("span:first-child").textContent = "正在比對資料…";
+  try {
+    if (hasPhoto) Object.keys(points).forEach(sampleOnePoint);
+    if (!shadeLibrary.length) await loadShadeLibrary();
+    const resultGrid = document.querySelector("#resultGrid");
+    resultGrid.innerHTML = Object.keys(ZONES).map(resultCard).join("");
+    resultGrid.hidden = false;
+    document.querySelector("#emptyResult").hidden = true;
+    const average = Object.values(ZONES).reduce((sum, zone) => ({ l: sum.l + zone.lab.l / 3, a: sum.a + zone.lab.a / 3, b: sum.b + zone.lab.b / 3 }), { l: 0, a: 0, b: 0 });
+    const overall = matchesFor(average)[0];
+    const overallElement = document.querySelector("#overallResult");
+    overallElement.hidden = false;
+    overallElement.querySelector("strong").textContent = overall?.name || "—";
+    const recipeData = await loadRecipes();
+    renderRecipe(findRecipe(recipeData, average), recipeData);
+    document.querySelector("#resultSummary").textContent = hasPhoto ? "三個取樣點已完成 L*a*b*、VITA 色階與配方比對。" : "目前使用範例數值完成資料比對。";
+    document.querySelector(".results-card").scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (error) {
+    document.querySelector("#errorMessage").textContent = `資料讀取失敗：${error.message}`;
+  } finally {
+    button.disabled = false;
+    button.querySelector("span:first-child").textContent = "偵測三區顏色並比對";
+  }
 });
 
-renderAllRegions();
+renderAllPoints();
 selectZone("middle");
+loadShadeLibrary();
