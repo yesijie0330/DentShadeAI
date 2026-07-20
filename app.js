@@ -317,3 +317,70 @@ document.querySelector("#analyzeButton").addEventListener("click", async () => {
 renderAllPoints();
 selectZone("middle");
 loadShadeLibrary();
+
+// Portal navigation and local-only workflow
+const portalViews = ["homeView", "samplingView", "projectsView", "feedbackView", "analysisView"];
+function showPortalView(id) {
+  portalViews.forEach((viewId) => { document.getElementById(viewId).hidden = viewId !== id; });
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+document.querySelectorAll("[data-open]").forEach((button) => {
+  button.addEventListener("click", () => {
+    const target = button.dataset.open;
+    if (target === "sampling") showPortalView("samplingView");
+    if (target === "analysis") showPortalView("analysisView");
+    if (target === "projects") { showPortalView("projectsView"); renderProjects(); }
+    if (target === "feedback") showPortalView("feedbackView");
+  });
+});
+document.querySelectorAll(".back-home").forEach((button) => button.addEventListener("click", () => showPortalView("homeView")));
+document.querySelector("#skipCalibration").addEventListener("click", () => showPortalView("analysisView"));
+document.querySelectorAll(".mode-switch button").forEach((button) => button.addEventListener("click", () => {
+  document.querySelectorAll(".mode-switch button").forEach((item) => item.classList.toggle("selected", item === button));
+}));
+
+function forwardPhoto(sourceInput) {
+  const chosen = sourceInput.files?.[0];
+  if (!chosen) return;
+  try {
+    const transfer = new DataTransfer();
+    transfer.items.add(chosen);
+    fileInput.files = transfer.files;
+    fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+  } catch (error) {
+    document.querySelector("#errorMessage").textContent = "瀏覽器無法轉交照片，請在分析頁再按一次上傳照片。";
+  }
+  showPortalView("analysisView");
+}
+document.querySelector("#cameraInput").addEventListener("change", (event) => forwardPhoto(event.currentTarget));
+document.querySelector("#albumInput").addEventListener("change", (event) => forwardPhoto(event.currentTarget));
+
+function getProjects() {
+  try { return JSON.parse(localStorage.getItem("dentshade-projects") || "[]"); }
+  catch (error) { return []; }
+}
+function escapeHtml(value) {
+  return value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[char]);
+}
+function renderProjects() {
+  const list = document.querySelector("#projectList");
+  const projects = getProjects();
+  list.innerHTML = projects.length ? projects.map((code) => `<li>${escapeHtml(code)}</li>`).join("") : "<li>尚未建立專案</li>";
+}
+document.querySelector("#saveProject").addEventListener("click", () => {
+  const input = document.querySelector("#projectCode");
+  const code = input.value.trim();
+  if (!code) return;
+  const projects = getProjects();
+  if (!projects.includes(code)) projects.unshift(code);
+  localStorage.setItem("dentshade-projects", JSON.stringify(projects.slice(0, 30)));
+  input.value = "";
+  renderProjects();
+});
+document.querySelector("#saveFeedback").addEventListener("click", () => {
+  const value = document.querySelector("#feedbackText").value.trim();
+  localStorage.setItem("dentshade-feedback", value);
+  document.querySelector("#feedbackStatus").textContent = value ? "已儲存在這台裝置。" : "備註已清除。";
+});
+document.querySelector("#feedbackText").value = localStorage.getItem("dentshade-feedback") || "";

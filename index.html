@@ -8,7 +8,33 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <main class="app-shell">
+    <section id="homeView" class="portal-view">
+      <nav class="portal-nav"><div class="portal-brand"><span>D</span><div><strong>DentShade</strong><small>AI SHADE GUIDE</small></div></div><button class="round-icon" type="button" aria-label="通知">○</button></nav>
+      <div class="portal-content"><p class="eyebrow green">DENTAL COLOR WORKSPACE</p><h1>今天要進行哪一項工作？</h1><p class="portal-lead">從拍照、三區取樣到色階與配方建議，照片只在目前裝置中處理。</p>
+        <div class="menu-grid">
+          <button class="menu-card" data-open="projects" type="button"><i>▤</i><span><strong>進入專案</strong><small>建立、瀏覽與管理本機專案</small></span><b>›</b></button>
+          <button class="menu-card" data-open="sampling" type="button"><i>◎</i><span><strong>拍照取樣</strong><small>拍照或選擇相簿，再設定三區取樣</small></span><b>›</b></button>
+          <button class="menu-card" data-open="analysis" type="button"><i>◉</i><span><strong>色彩檢測</strong><small>比較頸部、中部與切端的 L*a*b*</small></span><b>›</b></button>
+          <button class="menu-card" data-open="feedback" type="button"><i>✓</i><span><strong>配方回饋</strong><small>記錄成品結果與技師備註</small></span><b>›</b></button>
+        </div>
+      </div><p class="portal-note">研究與介面驗證用，不作為臨床診斷依據。</p>
+    </section>
+
+    <section id="samplingView" class="flow-view" hidden>
+      <header class="flow-header"><button class="back-home" type="button">‹</button><div><strong>拍照取樣</strong><small>THREE-ZONE SAMPLING</small></div></header>
+      <ol class="flow-steps"><li class="current"><b>1</b><span>拍攝</span></li><li><b>2</b><span>色卡</span></li><li><b>3</b><span>校正</span></li><li><b>4</b><span>取樣</span></li><li><b>5</b><span>完成</span></li></ol>
+      <div class="flow-content"><p class="eyebrow green">步驟 1・選擇照片來源</p><h2>拍攝色卡與牙齒</h2><p>建議讓牙齒與校色色卡同時清楚入鏡，避免強烈反光與濾鏡。</p>
+        <div class="mode-switch"><button class="selected" type="button">3×4 色卡 <em>建議</em></button><button type="button">快速校正</button></div>
+        <div class="shoot-tip"><i>▦</i><div><strong>拍攝重點</strong><span>使用均勻光線、鏡頭與牙面盡量平行，保留完整牙齒範圍。</span></div></div>
+        <h3>選擇照片來源</h3><div class="source-grid"><label class="camera-source">◎ 開啟相機拍照<input id="cameraInput" type="file" accept="image/*" capture="environment"></label><label>▧ 選擇相簿<input id="albumInput" type="file" accept="image/jpeg,image/png,image/webp"></label></div>
+        <button id="skipCalibration" class="continue-button" type="button">使用快速校正並進入三區取樣 →</button>
+      </div>
+    </section>
+
+    <section id="projectsView" class="simple-view" hidden><header><button class="back-home" type="button">‹</button><h2>本機專案</h2></header><div class="simple-card"><h3>建立新專案</h3><p>請勿輸入病患姓名或身分資料，可使用匿名編號。</p><div class="simple-form"><input id="projectCode" placeholder="例如：CASE-001" maxlength="30"><button id="saveProject" type="button">新增</button></div><ul id="projectList"></ul></div></section>
+    <section id="feedbackView" class="simple-view" hidden><header><button class="back-home" type="button">‹</button><h2>配方回饋</h2></header><div class="simple-card"><h3>成品結果紀錄</h3><p>備註只保存在這台裝置的瀏覽器。</p><textarea id="feedbackText" rows="6" placeholder="例如：中部明度略高，下次調整透明層比例"></textarea><button id="saveFeedback" class="continue-button" type="button">儲存回饋</button><p id="feedbackStatus"></p></div></section>
+
+    <main id="analysisView" class="app-shell" hidden>
       <aside class="sidebar">
         <div class="brand"><span>D</span><div><strong>DentShade</strong><small>AI SHADE GUIDE</small></div></div>
         <p class="eyebrow">LOCAL PROTOTYPE</p>
@@ -25,7 +51,7 @@
       <section class="workspace">
         <header>
           <div><p class="eyebrow green">AI 色階指南</p><h2>牙齒三區色彩分析</h2></div>
-          <button id="resetAll" class="ghost-button" type="button">↻ 重設</button>
+          <div class="header-actions"><button class="back-home ghost-button" type="button">⌂ 主選單</button><button id="resetAll" class="ghost-button" type="button">↻ 重設</button></div>
         </header>
 
         <div class="main-grid">
