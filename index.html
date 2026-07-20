@@ -8,8 +8,18 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <nav class="global-nav" aria-label="主要功能">
+      <button class="global-brand" data-open="home" type="button"><span>D</span><strong>DentShade</strong></button>
+      <div class="global-links">
+        <button data-open="projects" type="button">專案管理</button>
+        <button data-open="sampling" type="button">拍照取樣</button>
+        <button data-open="analysis" type="button">色彩檢測</button>
+        <button data-open="feedback" type="button">配方回饋</button>
+      </div>
+      <button class="global-reset" id="navReset" type="button" title="回到主選單">⌂</button>
+    </nav>
     <section id="homeView" class="portal-view">
-      <nav class="portal-nav"><div class="portal-brand"><span>D</span><div><strong>DentShade</strong><small>AI SHADE GUIDE</small></div></div><button class="round-icon" type="button" aria-label="通知">○</button></nav>
+      <nav class="portal-nav"><div class="portal-brand"><span>D</span><div><strong>DentShade</strong><small>AI SHADE GUIDE</small></div></div><span class="local-badge">LOCAL PROTOTYPE</span></nav>
       <div class="portal-content"><p class="eyebrow green">DENTAL COLOR WORKSPACE</p><h1>今天要進行哪一項工作？</h1><p class="portal-lead">從拍照、三區取樣到色階與配方建議，照片只在目前裝置中處理。</p>
         <div class="menu-grid">
           <button class="menu-card" data-open="projects" type="button"><i>▤</i><span><strong>進入專案</strong><small>建立、瀏覽與管理本機專案</small></span><b>›</b></button>

@@ -322,18 +322,22 @@ loadShadeLibrary();
 const portalViews = ["homeView", "samplingView", "projectsView", "feedbackView", "analysisView"];
 function showPortalView(id) {
   portalViews.forEach((viewId) => { document.getElementById(viewId).hidden = viewId !== id; });
+  const activeMap = { projectsView: "projects", samplingView: "sampling", analysisView: "analysis", feedbackView: "feedback" };
+  document.querySelectorAll(".global-links [data-open]").forEach((item) => item.classList.toggle("active", item.dataset.open === activeMap[id]));
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 document.querySelectorAll("[data-open]").forEach((button) => {
   button.addEventListener("click", () => {
     const target = button.dataset.open;
+    if (target === "home") showPortalView("homeView");
     if (target === "sampling") showPortalView("samplingView");
     if (target === "analysis") showPortalView("analysisView");
     if (target === "projects") { showPortalView("projectsView"); renderProjects(); }
     if (target === "feedback") showPortalView("feedbackView");
   });
 });
+document.querySelector("#navReset").addEventListener("click", () => showPortalView("homeView"));
 document.querySelectorAll(".back-home").forEach((button) => button.addEventListener("click", () => showPortalView("homeView")));
 document.querySelector("#skipCalibration").addEventListener("click", () => showPortalView("analysisView"));
 document.querySelectorAll(".mode-switch button").forEach((button) => button.addEventListener("click", () => {
